@@ -305,9 +305,10 @@ const roadTool: Tool = (() => {
       if (!world) return;
       const f = settlementNear(world, e.x, e.y);
       if (!f) {
+        // Clicked empty space — reset pending start but don't pan
         startId = null;
         st.selectObject(null);
-        return false; // no settlement hit → fall through to pan
+        return;
       }
       if (startId === null || startId === f.id) {
         startId = f.id;
