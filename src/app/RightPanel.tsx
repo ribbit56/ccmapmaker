@@ -8,10 +8,18 @@ import { Biome, type BiomeId, type Feature, type FeatureKind, type Label } from 
 
 export function RightPanel() {
   const open = useAppStore((s) => s.rightPanelOpen);
+  const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   if (!open) return null;
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-l border-desk-700 bg-desk-900 p-4 text-sm">
+    <>
+      {/* Mobile backdrop — tap to close */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 md:hidden"
+        onClick={toggleRightPanel}
+        aria-hidden="true"
+      />
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-l border-desk-700 bg-desk-900 p-4 text-sm md:relative md:inset-auto md:z-auto">
       <Section title="Generate">
         <GenerateControls />
       </Section>
@@ -48,6 +56,7 @@ export function RightPanel() {
         <Inspector />
       </Section>
     </aside>
+    </>
   );
 }
 

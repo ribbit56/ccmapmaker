@@ -130,7 +130,7 @@ export const useAppStore = create<AppState>((set) => ({
   seed: 'cartographer',
   themeId: 'old-atlas',
   activeTool: 'select',
-  rightPanelOpen: true,
+  rightPanelOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
 
   config: { ...DEFAULT_CONFIG },
   lockSeed: false,
