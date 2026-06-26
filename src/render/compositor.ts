@@ -153,7 +153,7 @@ export class Compositor {
   }
 
   /** Scale-to-fit the whole world centred in the viewport, with a small margin. */
-  fit(margin = 0.92): void {
+  fit(margin = 0.97): void {
     if (this.viewW === 0 || this.viewH === 0) return;
     const scale = Math.min(this.viewW / this.worldW, this.viewH / this.worldH) * margin;
     this.camera.scale = clamp(scale, MIN_SCALE, MAX_SCALE);

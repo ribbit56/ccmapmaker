@@ -43,6 +43,9 @@ export function MapCanvas() {
   /** Monotonic token so a superseded async roll's result is discarded on arrival. */
   const genTokenRef = useRef(0);
 
+  /** True once the first world has been fitted; after that the user owns the camera. */
+  const worldFittedRef = useRef(false);
+
   const seed = useAppStore((s) => s.seed);
   const regenNonce = useAppStore((s) => s.regenNonce);
   const worldRev = useAppStore((s) => s.worldRev);
@@ -82,18 +85,16 @@ export function MapCanvas() {
     compRef.current = comp;
     _comp = comp;
 
-    // --- Resize (DPR-correct), auto-fit only on the first measurement ---------
-    // Size once up front (don't rely on the observer's initial delivery, which is
-    // unreliable in some embedded/headless contexts), then keep it live.
-    let fitted = false;
+    // --- Resize (DPR-correct) -------------------------------------------------
+    // Keep fitting on every resize until the world first loads — the right panel
+    // and top bar settle their sizes asynchronously, so an early fit() call can
+    // use the wrong viewport dimensions. Once the world arrives the user owns
+    // the camera (worldFittedRef flips to true in the worldRev effect below).
     const syncSize = () => {
       const { clientWidth, clientHeight } = container;
       if (clientWidth === 0 || clientHeight === 0) return;
       comp.resize(clientWidth, clientHeight, window.devicePixelRatio || 1);
-      if (!fitted) {
-        comp.fit();
-        fitted = true;
-      }
+      if (!worldFittedRef.current) comp.fit();
     };
     syncSize();
     const ro = new ResizeObserver(syncSize);
@@ -358,6 +359,12 @@ export function MapCanvas() {
     if (!comp || !s.world) return;
     if (s.dirtyLayers === 'all') {
       comp.setWorld(s.world);
+      // First world load: re-fit now that layout (right panel, top bar) is settled,
+      // then hand camera control to the user for the rest of the session.
+      if (!worldFittedRef.current) {
+        comp.fit();
+        worldFittedRef.current = true;
+      }
       setCellCount(s.world.grid.count);
     } else {
       comp.updateWorld(s.world);
