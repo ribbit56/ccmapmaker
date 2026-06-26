@@ -44,6 +44,8 @@ interface AppState {
   themeId: string;
   activeTool: ToolId;
   rightPanelOpen: boolean;
+  /** Show the hover lore card over named places (CLAUDE.md §1). Off = inspector-only. */
+  showLore: boolean;
 
   /** Generation knobs (CLAUDE.md §7). */
   config: GenConfig;
@@ -87,6 +89,7 @@ interface AppState {
   setThemeId: (id: string) => void;
   setActiveTool: (tool: ToolId) => void;
   toggleRightPanel: () => void;
+  toggleLore: () => void;
 
   // --- Editing (CLAUDE.md §9, §10) ------------------------------------------
   /** The live world; tools mutate it in place, then bump worldRev. */
@@ -131,6 +134,7 @@ export const useAppStore = create<AppState>((set) => ({
   themeId: 'old-atlas',
   activeTool: 'select',
   rightPanelOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
+  showLore: true,
 
   config: { ...DEFAULT_CONFIG },
   lockSeed: false,
@@ -187,6 +191,7 @@ export const useAppStore = create<AppState>((set) => ({
   setThemeId: (themeId) => set({ themeId }),
   setActiveTool: (activeTool) => set({ activeTool }),
   toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
+  toggleLore: () => set((s) => ({ showLore: !s.showLore })),
 
   // --- Editing --------------------------------------------------------------
   world: null,

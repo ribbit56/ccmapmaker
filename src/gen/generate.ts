@@ -24,6 +24,7 @@ import { generateHydrology } from './steps/hydrology';
 import { placeSettlements } from './steps/settlements';
 import { generateRoads } from './steps/roads';
 import { generateLabels } from './steps/labels';
+import { assignFeatureLore, assignLabelLore } from './steps/lore';
 import { emptyWorld, type World } from '@/model/world';
 
 export interface GenerateOptions {
@@ -73,6 +74,10 @@ export function regenerateFeatures(world: World, featureSeed: string): World {
   const rng = makeRng(featureSeed, 'features');
   placeSettlements(world, world.config, rng);
   generateRoads(world, world.config);
+  // Names changed → refresh feature lore (hand-edited entries are skipped). Labels
+  // carry region/sea context lore depends on, so refresh label lore too.
+  assignLabelLore(world);
+  assignFeatureLore(world);
   return world;
 }
 
@@ -80,5 +85,8 @@ export function regenerateFeatures(world: World, featureSeed: string): World {
 export function regenerateLabels(world: World, labelSeed: string): World {
   const rng = makeRng(labelSeed, 'labels');
   generateLabels(world, world.config, rng);
+  // Region/sea names changed → refresh label lore and any feature lore that cites them.
+  assignLabelLore(world);
+  assignFeatureLore(world);
   return world;
 }

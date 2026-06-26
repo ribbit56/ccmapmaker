@@ -94,6 +94,20 @@ export type FeatureKind =
   | 'shipDecor'
   | 'monsterDecor';
 
+/**
+ * A scrap of invented history attached to a named place (CLAUDE.md §1 — the
+ * marginalia of a fantasy-hardback map). Generated deterministically from the seed
+ * like names are; `edited` marks a hand-written entry so re-rolls won't clobber it.
+ */
+export interface Lore {
+  /** Short title-line flavour, e.g. "the Drowned City". */
+  epithet?: string;
+  /** 1–3 sentences of history/description. */
+  text: string;
+  /** True once hand-edited — protects it from regeneration on re-roll. */
+  edited?: boolean;
+}
+
 export interface Feature {
   id: string;
   kind: FeatureKind;
@@ -104,6 +118,8 @@ export interface Feature {
   /** Coastal settlement (drives a small harbour accent). */
   port?: boolean;
   locked?: boolean;
+  /** Invented history shown on hover + in the inspector. */
+  lore?: Lore;
 }
 
 export interface Label {
@@ -115,6 +131,8 @@ export interface Label {
   rotation?: number;
   curve?: [number, number][];
   locked?: boolean;
+  /** Invented history shown on hover + in the inspector. */
+  lore?: Lore;
 }
 
 export interface World {

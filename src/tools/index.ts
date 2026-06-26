@@ -78,6 +78,20 @@ function labelAt(world: World, x: number, y: number): Label | null {
   return best;
 }
 
+/** The topmost editable object under (x, y): a feature wins over a label. Used by the
+ *  hover lore card (CLAUDE.md §1); mirrors the select tool's own hit-test order. */
+export function objectAt(
+  world: World,
+  x: number,
+  y: number,
+): { kind: 'feature'; obj: Feature } | { kind: 'label'; obj: Label } | null {
+  const f = featureAt(world, x, y);
+  if (f) return { kind: 'feature', obj: f };
+  const l = labelAt(world, x, y);
+  if (l) return { kind: 'label', obj: l };
+  return null;
+}
+
 // --- Select / Move ---------------------------------------------------------
 
 const selectTool: Tool = (() => {

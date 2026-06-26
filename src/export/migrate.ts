@@ -11,5 +11,10 @@ export function migrate(raw: any, fromVersion: number): any {
   if (fromVersion < 1) {
     raw.__schema = 1;
   }
+  // Version 1 → 2: optional `lore` added to features/labels. Purely additive — absent
+  // on old saves, which simply show no lore until re-rolled. No transform needed.
+  if (fromVersion < 2) {
+    raw.__schema = 2;
+  }
   return raw;
 }

@@ -4,7 +4,10 @@
 */
 import { useAppStore } from '@/state/store';
 import type { GenConfig, WorldShape, NamingStyle } from '@/gen/config';
-import { Biome, type BiomeId, type Feature, type FeatureKind, type Label } from '@/model/world';
+import { Biome, type BiomeId, type Feature, type FeatureKind, type Label, type Lore } from '@/model/world';
+import { loreForFeature, loreForLabel } from '@/gen/steps/lore';
+import { makeRng, randomSeedString } from '@/gen/rng';
+import { DiceIcon } from './icons';
 
 export function RightPanel() {
   const open = useAppStore((s) => s.rightPanelOpen);
@@ -42,6 +45,7 @@ export function RightPanel() {
         <DecorToggle name="Scale bar" k="scaleBar" />
         <DecorToggle name="Sea creatures" k="creatures" />
         <DecorToggle name="Border frame" k="frame" />
+        <LoreToggle />
       </Section>
 
       <Section title="Aging">
@@ -245,6 +249,23 @@ function DecorToggle({ name, k }: { name: string; k: DecorKey }) {
   );
 }
 
+/** Toggle the hover lore card (CLAUDE.md §1). Off leaves a clean map + inspector-only lore. */
+function LoreToggle() {
+  const showLore = useAppStore((s) => s.showLore);
+  const toggleLore = useAppStore((s) => s.toggleLore);
+  return (
+    <label className="flex cursor-pointer items-center justify-between rounded bg-desk-850 px-2 py-1.5">
+      <span className="text-xs text-ink-200">Lore tooltips</span>
+      <input
+        type="checkbox"
+        checked={showLore}
+        onChange={toggleLore}
+        className="accent-brass-500"
+      />
+    </label>
+  );
+}
+
 function LayerRow({ name, on, muted }: { name: string; on?: boolean; muted?: boolean }) {
   return (
     <div
@@ -394,6 +415,25 @@ function FeatureInspector({ f }: { f: Feature }) {
       ['settlements', 'labels'],
     );
   const rankFor = (k: FeatureKind) => (k === 'capital' ? 4 : k === 'city' ? 3 : k === 'town' ? 2 : 1);
+  // Lore edits don't change the map (chrome only), so they repaint no layers.
+  const setLore = (lore: Lore) =>
+    useAppStore.getState().applyEdit(
+      ['features'],
+      (w) => {
+        const t = w.features.find((x) => x.id === id);
+        if (t) t.lore = lore;
+      },
+      [],
+    );
+  const rerollLore = () =>
+    useAppStore.getState().applyEdit(
+      ['features'],
+      (w) => {
+        const t = w.features.find((x) => x.id === id);
+        if (t) t.lore = loreForFeature(w, t, makeRng(randomSeedString(), 'lore'));
+      },
+      [],
+    );
   return (
     <div className="flex flex-col gap-2.5">
       <TextField label="Name" value={f.name ?? ''} onCommit={(name) => patch({ name })} />
@@ -404,6 +444,7 @@ function FeatureInspector({ f }: { f: Feature }) {
         onChange={(kind) => patch({ kind, rank: rankFor(kind) })}
       />
       <Check label="Port (harbour)" checked={!!f.port} onChange={(port) => patch({ port })} />
+      <LoreEditor lore={f.lore} onChange={setLore} onReroll={rerollLore} />
       <ObjectActions locked={!!f.locked} />
     </div>
   );
@@ -419,6 +460,24 @@ function LabelInspector({ l }: { l: Label }) {
         if (t) Object.assign(t, p);
       },
       ['labels'],
+    );
+  const setLore = (lore: Lore) =>
+    useAppStore.getState().applyEdit(
+      ['labels'],
+      (w) => {
+        const t = w.labels.find((x) => x.id === id);
+        if (t) t.lore = lore;
+      },
+      [],
+    );
+  const rerollLore = () =>
+    useAppStore.getState().applyEdit(
+      ['labels'],
+      (w) => {
+        const t = w.labels.find((x) => x.id === id);
+        if (t) t.lore = loreForLabel(w, t, makeRng(randomSeedString(), 'lore'));
+      },
+      [],
     );
   return (
     <div className="flex flex-col gap-2.5">
@@ -439,7 +498,58 @@ function LabelInspector({ l }: { l: Label }) {
           className="accent-brass-500"
         />
       </label>
+      <LoreEditor lore={l.lore} onChange={setLore} onReroll={rerollLore} />
       <ObjectActions locked={!!l.locked} />
+    </div>
+  );
+}
+
+/**
+ * Lore editor block (CLAUDE.md §1): an epithet line + a multi-line history, with a
+ * dice to re-roll fresh generated text. Any keystroke marks the entry `edited` so a
+ * world re-roll won't overwrite hand-written lore; the dice clears that flag.
+ */
+function LoreEditor({
+  lore,
+  onChange,
+  onReroll,
+}: {
+  lore?: Lore;
+  onChange: (l: Lore) => void;
+  onReroll: () => void;
+}) {
+  const epithet = lore?.epithet ?? '';
+  const text = lore?.text ?? '';
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-desk-700 pt-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Lore</span>
+        <button
+          type="button"
+          title="Re-roll lore"
+          aria-label="Re-roll lore"
+          onClick={onReroll}
+          className="grid h-6 w-6 place-items-center rounded text-ink-400 transition-colors hover:bg-desk-700 hover:text-brass-300"
+        >
+          <DiceIcon />
+        </button>
+      </div>
+      <input
+        value={epithet}
+        placeholder="epithet — e.g. the Drowned City"
+        onChange={(e) => onChange({ epithet: e.target.value, text, edited: true })}
+        className="rounded border border-desk-700 bg-desk-850 px-2 py-1 text-xs italic text-ink-100 outline-none focus:border-brass-500"
+      />
+      <textarea
+        value={text}
+        rows={6}
+        placeholder="No lore yet — re-roll, or write your own history here."
+        onChange={(e) => onChange({ epithet, text: e.target.value, edited: true })}
+        className="resize-y rounded border border-desk-700 bg-desk-850 px-2 py-1 text-xs leading-relaxed text-ink-100 outline-none focus:border-brass-500"
+      />
+      {lore?.edited && (
+        <span className="text-[10px] text-ink-500">Hand-edited — kept on re-roll.</span>
+      )}
     </div>
   );
 }

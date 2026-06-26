@@ -29,7 +29,8 @@ import { WORLD_WIDTH, WORLD_HEIGHT } from '@/render/constants';
 import { generate, rerollFeatures, rerollLabels } from '@/gen/genClient';
 import { getTheme } from '@/themes';
 import { useAppStore, type ToolId } from '@/state/store';
-import { getTool, type Tool } from '@/tools';
+import { getTool, objectAt, type Tool } from '@/tools';
+import { LoreCard, type HoverLore } from './LoreCard';
 import { autosave, loadAutosave } from '@/export/storage';
 
 /** Module-level compositor ref so TopBar can trigger PNG export without prop drilling. */
@@ -45,6 +46,10 @@ export function MapCanvas() {
 
   /** True once the first world has been fitted; after that the user owns the camera. */
   const worldFittedRef = useRef(false);
+
+  /** Hover lore card state (CLAUDE.md §1) — set imperatively by the pointer handler. */
+  const [hover, setHover] = useState<HoverLore | null>(null);
+  const showLore = useAppStore((s) => s.showLore);
 
   const seed = useAppStore((s) => s.seed);
   const regenNonce = useAppStore((s) => s.regenNonce);
@@ -163,6 +168,55 @@ export function MapCanvas() {
     let toolActive = false;
     let toolHandler: Tool | null = null;
 
+    // --- Hover lore card (read-only) -----------------------------------------
+    // Anchored to the hovered object's screen position. We only push React state
+    // when the hovered object *changes*, so moving within one object never re-renders.
+    let hoverId: string | null = null;
+    const clearHover = () => {
+      if (hoverId !== null) {
+        hoverId = null;
+        setHover(null);
+      }
+    };
+    const FEATURE_KIND_LABEL: Record<string, string> = {
+      capital: 'Capital', city: 'City', town: 'Town', village: 'Village', port: 'Port',
+      fortress: 'Fortress', ruin: 'Ruin', temple: 'Temple', tower: 'Tower',
+    };
+    const ROLE_LABEL: Record<string, string> = {
+      region: 'Region', range: 'Range', water: 'Waters', settlement: 'Settlement', title: '',
+    };
+    const updateHover = (wx: number, wy: number) => {
+      const st = useAppStore.getState();
+      if (!st.showLore || !st.world) return clearHover();
+      const hit = objectAt(st.world, wx, wy);
+      if (!hit || !hit.obj.lore) return clearHover();
+      if (hit.obj.id === hoverId) return; // same object → skip re-render
+      hoverId = hit.obj.id;
+      const cam = comp.getCamera();
+      const sx = hit.obj.x * cam.scale + cam.tx;
+      const sy = hit.obj.y * cam.scale + cam.ty;
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const base = { sx, sy, placeLeft: sx > cw * 0.6, placeAbove: sy > ch * 0.6 };
+      if (hit.kind === 'feature') {
+        setHover({
+          ...base,
+          title: hit.obj.name ?? 'Unnamed',
+          sub: FEATURE_KIND_LABEL[hit.obj.kind] ?? hit.obj.kind,
+          epithet: hit.obj.lore!.epithet,
+          text: hit.obj.lore!.text,
+        });
+      } else {
+        setHover({
+          ...base,
+          title: hit.obj.text,
+          sub: ROLE_LABEL[hit.obj.role] ?? '',
+          epithet: hit.obj.lore!.epithet,
+          text: hit.obj.lore!.text,
+        });
+      }
+    };
+
     const localPos = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -171,6 +225,7 @@ export function MapCanvas() {
     const onPointerDown = (e: PointerEvent) => {
       const p = localPos(e);
       pointers.set(e.pointerId, p);
+      clearHover(); // any interaction dismisses the lore card
       const wantsPan = e.button === 1 || (e.button === 0 && spaceDown);
       if (wantsPan) {
         panning = true;
@@ -219,6 +274,7 @@ export function MapCanvas() {
         const mid = { x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 };
         if (pinchDist > 0) comp.zoomAt(mid.x, mid.y, dist / pinchDist);
         pinchDist = dist;
+        clearHover();
         return;
       }
 
@@ -232,6 +288,10 @@ export function MapCanvas() {
 
       const wp = comp.screenToWorld(p.x, p.y);
       setCursorWorld(wp);
+
+      // Hover lore: only when idle (not panning / dragging a tool / pinching).
+      if (panning || toolActive || pointers.size > 1) clearHover();
+      else updateHover(wp.x, wp.y);
     };
 
     const endPointer = (e: PointerEvent) => {
@@ -251,11 +311,15 @@ export function MapCanvas() {
       }
     };
 
-    const onPointerLeave = () => setCursorWorld(null);
+    const onPointerLeave = () => {
+      setCursorWorld(null);
+      clearHover();
+    };
 
     // Native wheel listener so we can preventDefault (React's is passive).
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      clearHover();
       const r = canvas.getBoundingClientRect();
       const factor = Math.exp(-e.deltaY * 0.0015);
       comp.zoomAt(e.clientX - r.left, e.clientY - r.top, factor);
@@ -400,6 +464,7 @@ export function MapCanvas() {
   return (
     <div ref={containerRef} className="relative h-full w-full overflow-hidden bg-desk-950">
       <canvas ref={canvasRef} className="block touch-none select-none" />
+      {showLore && hover && <LoreCard hover={hover} />}
       <GeneratingOverlay show={generating} />
     </div>
   );
