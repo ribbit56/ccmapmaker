@@ -18,7 +18,6 @@ import {
   type BiomeId,
   type Feature,
   type FeatureKind,
-  type Label,
   type River,
   type Road,
   type World,
@@ -150,29 +149,7 @@ const placeTool: Tool = {
   },
 };
 
-// --- Label -----------------------------------------------------------------
-
-const labelTool: Tool = {
-  cursor: 'text',
-  onDown(e) {
-    const st = useAppStore.getState();
-    if (!st.world) return;
-    const role = st.labelRole;
-    const defaultText =
-      role === 'water' ? 'The Sea' : role === 'range' ? 'Mountains' : role === 'region' ? 'Region' : 'Label';
-    const label: Label = {
-      id: `l${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`,
-      text: defaultText,
-      x: e.x,
-      y: e.y,
-      role,
-    };
-    st.applyEdit(['labels'], (w) => w.labels.push(label), ['labels']);
-    st.selectObject({ kind: 'label', id: label.id });
-  },
-};
-
-// --- Brushes (biome / mountain / forest) -----------------------------------
+// --- Brushes (biome / mountain) --------------------------------------------
 
 function paint(world: World, cx: number, cy: number, radius: number, biome: BiomeId, raise: boolean): void {
   const { grid, cells } = world;
@@ -223,7 +200,6 @@ function makeBrush(biomeFor: () => BiomeId, raise: boolean): Tool {
 
 const biomeBrush = makeBrush(() => useAppStore.getState().brushBiome, false);
 const mountainBrush = makeBrush(() => Biome.mountain, true);
-const forestBrush = makeBrush(() => Biome.forest, false);
 
 // --- Coastline brush (CLAUDE.md §9) ----------------------------------------
 //
@@ -304,6 +280,19 @@ const coastlineBrush: Tool = (() => {
 
 const SETTLEMENT_KINDS: ReadonlySet<FeatureKind> = new Set(['capital', 'city', 'town', 'village']);
 
+// Generous 40-world-px radius (~12 screen px at fit zoom ~0.3) so clicks on small icons land.
+const ROAD_HIT = 40;
+function settlementNear(world: World, x: number, y: number): Feature | null {
+  let best: Feature | null = null;
+  let bestD = ROAD_HIT;
+  for (const f of world.features) {
+    if (!SETTLEMENT_KINDS.has(f.kind)) continue;
+    const d = Math.hypot(f.x - x, f.y - y);
+    if (d < bestD) { bestD = d; best = f; }
+  }
+  return best;
+}
+
 const roadTool: Tool = (() => {
   let startId: string | null = null;
 
@@ -313,11 +302,11 @@ const roadTool: Tool = (() => {
       const st = useAppStore.getState();
       const world = st.world;
       if (!world) return;
-      const f = featureAt(world, e.x, e.y);
-      if (!f || !SETTLEMENT_KINDS.has(f.kind)) {
+      const f = settlementNear(world, e.x, e.y);
+      if (!f) {
         startId = null;
         st.selectObject(null);
-        return;
+        return false; // no settlement hit → fall through to pan
       }
       if (startId === null || startId === f.id) {
         startId = f.id;
@@ -377,12 +366,21 @@ const riverTool: Tool = (() => {
   return {
     cursor: 'crosshair',
     onDown(e) {
-      if (!useAppStore.getState().world) return;
+      const world = useAppStore.getState().world;
+      if (!world) return;
+      // Don't allow starting a river on open ocean or lake.
+      const ci = nearestCell(world.grid, e.x, e.y);
+      if (world.cells.water[ci] !== Water.land) return false;
       down = { x: e.x, y: e.y };
       pts = [[e.x, e.y]];
     },
     onMove(e) {
       if (!down) return;
+      const world = useAppStore.getState().world;
+      if (!world) return;
+      // Skip points that cross over water cells mid-stroke.
+      const ci = nearestCell(world.grid, e.x, e.y);
+      if (world.cells.water[ci] !== Water.land) return;
       const last = pts[pts.length - 1]!;
       if (Math.hypot(e.x - last[0], e.y - last[1]) >= RIVER_SAMPLE) pts.push([e.x, e.y]);
     },
@@ -411,40 +409,16 @@ const riverTool: Tool = (() => {
   };
 })();
 
-// --- Decoration tool (CLAUDE.md §9) ----------------------------------------
-//
-// Drop a compass / ship / sea-monster ornament as a feature at the click point.
-// These render in the decoration layer and are selectable/movable like any feature.
-
-const decorationTool: Tool = {
-  cursor: 'crosshair',
-  onDown(e) {
-    const st = useAppStore.getState();
-    if (!st.world) return;
-    const feature: Feature = {
-      id: `dec${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`,
-      kind: st.decorKind,
-      x: e.x,
-      y: e.y,
-    };
-    st.applyEdit(['features'], (w) => w.features.push(feature), ['decoration']);
-    st.selectObject({ kind: 'feature', id: feature.id });
-  },
-};
-
 // --- Registry --------------------------------------------------------------
 
 const TOOLS: Partial<Record<ToolId, Tool>> = {
   select: selectTool,
   feature: placeTool,
-  label: labelTool,
   biome: biomeBrush,
   mountain: mountainBrush,
-  forest: forestBrush,
   coastline: coastlineBrush,
   road: roadTool,
   river: riverTool,
-  decoration: decorationTool,
 };
 
 /** The active tool's handlers, or null for not-yet-implemented tools. */

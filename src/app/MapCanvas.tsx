@@ -107,12 +107,9 @@ export function MapCanvas() {
       c: 'coastline',
       b: 'biome',
       m: 'mountain',
-      f: 'forest',
       r: 'river',
       d: 'road',
       p: 'feature',
-      t: 'label',
-      o: 'decoration',
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTextTarget(e.target)) return;

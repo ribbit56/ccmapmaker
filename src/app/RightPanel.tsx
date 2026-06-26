@@ -1,4 +1,4 @@
-/*
+﻿/*
   Right inspector panel (CLAUDE.md §10) — collapsible, context-sensitive. Hosts the
   live Generate controls (§7), layer list, decoration toggles, aging, and inspector.
 */
@@ -287,19 +287,11 @@ const LABEL_ROLES: { value: NonNullable<Label['role']>; label: string }[] = [
   { value: 'water', label: 'Water' },
   { value: 'settlement', label: 'Settlement' },
 ];
-const DECOR_KINDS: { value: 'compass' | 'shipDecor' | 'monsterDecor'; label: string }[] = [
-  { value: 'compass', label: 'Compass rose' },
-  { value: 'shipDecor', label: 'Ship' },
-  { value: 'monsterDecor', label: 'Sea monster' },
-];
-
 function ToolOptions() {
   const tool = useAppStore((s) => s.activeTool);
   const placeKind = useAppStore((s) => s.placeKind);
   const brushBiome = useAppStore((s) => s.brushBiome);
   const brushSize = useAppStore((s) => s.brushSize);
-  const labelRole = useAppStore((s) => s.labelRole);
-  const decorKind = useAppStore((s) => s.decorKind);
   const st = useAppStore;
 
   switch (tool) {
@@ -316,18 +308,6 @@ function ToolOptions() {
       return <Hint>Click one settlement, then another, to lay a road or trail between them.</Hint>;
     case 'river':
       return <Hint>Drag from source to mouth to draw a river. Click a river to delete it.</Hint>;
-    case 'decoration':
-      return (
-        <>
-          <Dropdown
-            label="Place ornament"
-            value={decorKind}
-            options={DECOR_KINDS}
-            onChange={(v) => st.getState().setDecorKind(v)}
-          />
-          <Hint>Click open sea to drop it; drag with Select to reposition.</Hint>
-        </>
-      );
     case 'feature':
       return (
         <Dropdown
@@ -351,24 +331,8 @@ function ToolOptions() {
           <BrushSize value={brushSize} />
         </>
       );
-    case 'forest':
-      return (
-        <>
-          <Hint>Paints forest.</Hint>
-          <BrushSize value={brushSize} />
-        </>
-      );
-    case 'label':
-      return (
-        <Dropdown
-          label="New label"
-          value={labelRole}
-          options={LABEL_ROLES}
-          onChange={(v) => st.getState().setLabelRole(v)}
-        />
-      );
     default:
-      return <Hint>This tool isn’t wired up yet — coming in a later pass.</Hint>;
+      return null;
   }
 }
 

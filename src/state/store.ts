@@ -9,7 +9,7 @@
 import { create } from 'zustand';
 import { randomSeedString } from '@/gen/rng';
 import { DEFAULT_CONFIG, type GenConfig } from '@/gen/config';
-import { Biome, type World, type Label, type FeatureKind, type BiomeId } from '@/model/world';
+import { Biome, type World, type FeatureKind, type BiomeId } from '@/model/world';
 import { capture, apply, type EditField } from './history';
 
 /** Which generation stage a regenerate request covers (CLAUDE.md §7). */
@@ -33,12 +33,9 @@ export type ToolId =
   | 'coastline'
   | 'biome'
   | 'mountain'
-  | 'forest'
   | 'river'
   | 'road'
-  | 'feature'
-  | 'label'
-  | 'decoration';
+  | 'feature';
 
 interface AppState {
   mapName: string;
@@ -105,14 +102,9 @@ interface AppState {
   placeKind: FeatureKind;
   brushBiome: BiomeId;
   brushSize: number;
-  labelRole: NonNullable<Label['role']>;
-  /** Which ornament the decoration tool drops. */
-  decorKind: 'compass' | 'shipDecor' | 'monsterDecor';
   setPlaceKind: (k: FeatureKind) => void;
   setBrushBiome: (b: BiomeId) => void;
   setBrushSize: (n: number) => void;
-  setLabelRole: (r: NonNullable<Label['role']>) => void;
-  setDecorKind: (k: 'compass' | 'shipDecor' | 'monsterDecor') => void;
 
   /** Replace the whole world (full regen) — clears history + selection. */
   setWorld: (world: World) => void;
@@ -207,13 +199,9 @@ export const useAppStore = create<AppState>((set) => ({
   placeKind: 'town',
   brushBiome: Biome.forest,
   brushSize: 36,
-  labelRole: 'region',
-  decorKind: 'compass',
   setPlaceKind: (placeKind) => set({ placeKind }),
   setBrushBiome: (brushBiome) => set({ brushBiome }),
   setBrushSize: (brushSize) => set({ brushSize }),
-  setLabelRole: (labelRole) => set({ labelRole }),
-  setDecorKind: (decorKind) => set({ decorKind }),
 
   setWorld: (world) => {
     undoStack.length = 0;

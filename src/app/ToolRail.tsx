@@ -9,12 +9,9 @@ import {
   CoastlineIcon,
   BiomeIcon,
   MountainIcon,
-  ForestIcon,
   RiverIcon,
   RoadIcon,
   FeatureIcon,
-  LabelIcon,
-  DecorationIcon,
 } from './icons';
 import type { ComponentType, SVGProps } from 'react';
 
@@ -30,12 +27,9 @@ const TOOLS: ToolDef[] = [
   { id: 'coastline', label: 'Coastline brush', shortcut: 'C', Icon: CoastlineIcon },
   { id: 'biome', label: 'Biome brush', shortcut: 'B', Icon: BiomeIcon },
   { id: 'mountain', label: 'Mountain stamp', shortcut: 'M', Icon: MountainIcon },
-  { id: 'forest', label: 'Forest stamp', shortcut: 'F', Icon: ForestIcon },
   { id: 'river', label: 'River tool', shortcut: 'R', Icon: RiverIcon },
   { id: 'road', label: 'Road tool', shortcut: 'D', Icon: RoadIcon },
   { id: 'feature', label: 'Place feature', shortcut: 'P', Icon: FeatureIcon },
-  { id: 'label', label: 'Label tool', shortcut: 'T', Icon: LabelIcon },
-  { id: 'decoration', label: 'Decoration', shortcut: 'O', Icon: DecorationIcon },
 ];
 
 export function ToolRail() {
