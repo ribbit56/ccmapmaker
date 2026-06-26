@@ -18,6 +18,7 @@ import {
   type BiomeId,
   type Feature,
   type FeatureKind,
+  type Label,
   type River,
   type Road,
   type World,
